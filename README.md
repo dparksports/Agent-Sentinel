@@ -43,6 +43,13 @@ LlamaCppRunner.exe "C:\Path\To\Model.gguf" "Your prompt here"
 LlamaCppRunner.exe "C:\Users\honey\.lmstudio\models\lmstudio-community\NVIDIA-Nemotron-3-Nano-30B-A3B-GGUF\NVIDIA-Nemotron-3-Nano-30B-A3B-Q4_K_M.gguf" "Explain efficient code."
 ```
 
+### Running from Any Directory
+You can run the executable from anywhere by using its full path. The required DLLs (`llama.dll`, etc.) are in the same folder, so they will be loaded automatically.
+
+```powershell
+& "c:\Users\honey\mydog\LlamaCppRunner\build\LlamaCppRunner.exe" "C:\Path\To\Model.gguf" "Your Prompt"
+```
+
 ## Known Issues
 
 ### MSVC Stack Overflow (Regex)
