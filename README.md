@@ -74,15 +74,29 @@ Example:
 ```
 
 ## Features
-- **GPU Acceleration**: 100% offload to NVIDIA GPUs via CUDA.
+- **GPU Acceleration**: 100% offload to NVIDIA GPUs via CUDA (RTX 3090, 4090, 5090 etc).
 - **Smart Memory**: Persistent conversation history using re-evaluation.
 - **Auto-Download**: Automatically downloads the optimized Nemotron-3-Nano model on first run.
 - **Nemotron Optimized**: Uses official prompt templates for high-quality responses.
 - **Clean Interface**: Debug logs are suppressed and written to `log.txt`.
+
+## Supported Hardware
+**Agent Sentinel** is optimized for modern NVIDIA GPUs with CUDA support:
+- **RTX 5090 (Blackwell)**: Fully Supported (Tested).
+- **RTX 4090 (Ada Lovelace)**: Fully Supported.
+- **RTX 3090 (Ampere)**: Fully Supported.
+
+## Model Information
+The application is pre-configured for **NVIDIA Nemotron-3-Nano-30B**.
+- **Auto-Download**: If the model is missing, the app will download it automatically (~20GB) to the `models/` directory.
+- **Manual Download**: If you prefer to download manually (e.g., using a download manager), get the file here:
+  - [NVIDIA-Nemotron-3-Nano-30B-A3B-Q4_K_M.gguf](https://huggingface.co/lmstudio-community/NVIDIA-Nemotron-3-Nano-30B-A3B-GGUF/resolve/main/NVIDIA-Nemotron-3-Nano-30B-A3B-Q4_K_M.gguf?download=true)
+  - Place it in: `[AgentFolder]/models/NVIDIA-Nemotron-3-Nano-30B-A3B-Q4_K_M.gguf`
 
 ## Known Issues
 
 - **MSVC Stack Size**: Configured with 256MB stack to handle complex BPE tokenizers.
 
 ## License
-Private Development.
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
