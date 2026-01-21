@@ -189,6 +189,16 @@ int main(int argc, char **argv) {
       std::cout << piece << std::flush;
       current_response += piece;
 
+      // Stop sequence detection
+      if (current_response.find("User:") != std::string::npos) {
+        // Truncate the response to remove "User:" from the history recording
+        current_response =
+            current_response.substr(0, current_response.find("User:"));
+        // We don't remove it from screen (stdout) easily without ncurses, but
+        // we stop the loop.
+        break;
+      }
+
       // Prepare next batch
       llama_batch batch = llama_batch_get_one(&new_token_id, 1);
       if (llama_decode(ctx, batch) != 0) {
