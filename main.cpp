@@ -1,4 +1,5 @@
 #include "llama.h"
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
@@ -59,6 +60,12 @@ int main(int argc, char **argv) {
 
   ensure_model_exists(model_path);
 
+  // Redirect stderr to log.txt to avoid spamming the console with llama.cpp
+  // logs We do this after ensure_model_exists so download errors are visible.
+  if (freopen("log.txt", "w", stderr) == NULL) {
+    std::cout << "Warning: Failed to redirect stderr to log.txt" << std::endl;
+  }
+
   // Initialize backend
   ggml_backend_load_all();
 
@@ -69,6 +76,11 @@ int main(int argc, char **argv) {
   llama_model *model =
       llama_model_load_from_file(model_path.c_str(), model_params);
   if (!model) {
+    // Restore stderr to print fatal error if possible, or just exit.
+    // Since we redirected, this goes to log.txt.
+    // We should probably print to stdout as well for the user.
+    std::cout << "Failed to load model from " << model_path
+              << ". Check log.txt for details." << std::endl;
     std::cerr << "Failed to load model from " << model_path << std::endl;
     return 1;
   }
@@ -179,6 +191,7 @@ int main(int argc, char **argv) {
       llama_token new_token_id = llama_sampler_sample(smpl, ctx, -1);
 
       if (llama_vocab_is_eog(vocab, new_token_id)) {
+        std::cerr << "Debug: EOG token encountered." << std::endl;
         break;
       }
 
@@ -186,16 +199,20 @@ int main(int argc, char **argv) {
       int n =
           llama_token_to_piece(vocab, new_token_id, buf, sizeof(buf), 0, true);
       std::string piece(buf, n);
+
       std::cout << piece << std::flush;
       current_response += piece;
 
       // Stop sequence detection
-      if (current_response.find("User:") != std::string::npos) {
-        // Truncate the response to remove "User:" from the history recording
-        current_response =
-            current_response.substr(0, current_response.find("User:"));
-        // We don't remove it from screen (stdout) easily without ncurses, but
-        // we stop the loop.
+      // Check if response starts with "User:" or contains "\nUser:"
+      if (current_response.find("User:") == 0 ||
+          current_response.find("\nUser:") != std::string::npos) {
+        std::cerr << "Debug: Stop sequence detected." << std::endl;
+
+        size_t stop_pos = current_response.find("User:") == 0
+                              ? 0
+                              : current_response.find("\nUser:");
+        current_response = current_response.substr(0, stop_pos);
         break;
       }
 
