@@ -73,70 +73,108 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  // Initialize Context
-  auto ctx_params = llama_context_default_params();
-  ctx_params.n_ctx = 4096; // Fixed context size for interactive session
-  ctx_params.n_batch = 2048;
-
-  llama_context *ctx = llama_init_from_model(model, ctx_params);
-  if (!ctx) {
-    std::cerr << "Failed to create context" << std::endl;
-    return 1;
-  }
-
-  // Initialize Sampler
-  auto sparams = llama_sampler_chain_default_params();
-  llama_sampler *smpl = llama_sampler_chain_init(sparams);
-  llama_sampler_chain_add(smpl, llama_sampler_init_greedy());
-
   const llama_vocab *vocab = llama_model_get_vocab(model);
 
   // Interactive Loop
   bool first_run = true;
+  std::string conversation_history = "";
+
   while (true) {
-    std::string prompt;
+    std::string user_input;
+    std::string current_response = "";
 
     if (first_run && !initial_prompt.empty()) {
-      prompt = initial_prompt;
+      user_input = initial_prompt;
       first_run = false;
     } else {
       std::cout << "\nUser: ";
-      std::getline(std::cin, prompt);
+      std::getline(std::cin, user_input);
     }
 
-    if (prompt == "exit" || prompt == "quit" || prompt.empty()) {
+    if (user_input == "exit" || user_input == "quit" || user_input.empty()) {
       break;
     }
 
-    // Clear cache for fresh query (stateless) using new memory API
-    // llama_memory_seq_rm(mem, seq_id, p0, p1): seq_id=-1 (all), p0=-1 (all),
-    // p1=-1
-    llama_memory_seq_rm(llama_get_memory(ctx), -1, -1, -1);
+    // Update history
+    conversation_history += "User: " + user_input + "\nAssistant: ";
 
-    // Tokenize Prompt
-    int n_prompt = -llama_tokenize(vocab, prompt.c_str(), prompt.size(), NULL,
-                                   0, true, true);
-    std::vector<llama_token> prompt_tokens(n_prompt);
-    if (llama_tokenize(vocab, prompt.c_str(), prompt.size(),
-                       prompt_tokens.data(), prompt_tokens.size(), true,
+    // Initialize Context (Recreate per turn for stateless safety)
+    auto ctx_params = llama_context_default_params();
+    ctx_params.n_ctx = 4096;
+    ctx_params.n_batch = 2048;
+
+    llama_context *ctx = llama_init_from_model(model, ctx_params);
+    if (!ctx) {
+      std::cerr << "Failed to create context" << std::endl;
+      break;
+    }
+
+    // Initialize Sampler
+    auto sparams = llama_sampler_chain_default_params();
+    llama_sampler *smpl = llama_sampler_chain_init(sparams);
+    llama_sampler_chain_add(smpl, llama_sampler_init_greedy());
+
+    // Tokenize Full History
+    int n_tokens = -llama_tokenize(
+        vocab, conversation_history.c_str(),
+        static_cast<int>(conversation_history.size()), NULL, 0, true, true);
+    std::vector<llama_token> history_tokens(n_tokens);
+    if (llama_tokenize(vocab, conversation_history.c_str(),
+                       static_cast<int>(conversation_history.size()),
+                       history_tokens.data(),
+                       static_cast<int>(history_tokens.size()), true,
                        true) < 0) {
-      std::cerr << "Failed to tokenize prompt" << std::endl;
+      std::cerr << "Failed to tokenize history" << std::endl;
+      llama_sampler_free(smpl);
+      llama_free(ctx);
       continue;
+    }
+
+    // Decode Full History (No output, just priming state)
+    // We process in batches of n_batch
+    for (size_t i = 0; i < history_tokens.size(); i += ctx_params.n_batch) {
+      int32_t n_eval =
+          (int32_t)((history_tokens.size() - i < ctx_params.n_batch)
+                        ? (history_tokens.size() - i)
+                        : ctx_params.n_batch);
+
+      // llama_batch_get_one expects a pointer to a single token, but we want to
+      // process a sequence. Let's manually construct the batch for the sequence
+      // segment.
+      llama_batch seq_batch = llama_batch_init(n_eval, 0, 1);
+      for (int32_t j = 0; j < n_eval; j++) {
+        seq_batch.token[j] = history_tokens[i + j];
+        seq_batch.pos[j] = (llama_pos)(i + j);
+        seq_batch.n_seq_id[j] = 1;
+        seq_batch.seq_id[j][0] = 0;
+        seq_batch.logits[j] = false; // logic: we only need logits for the very
+                                     // last token of the history
+      }
+      seq_batch.n_tokens = n_eval;
+
+      // Enable logits for the last token of the entire history so we can sample
+      // next
+      if (i + n_eval == history_tokens.size()) {
+        seq_batch.logits[n_eval - 1] = true;
+      }
+
+      if (llama_decode(ctx, seq_batch) != 0) {
+        std::cerr << "Failed to decode batch" << std::endl;
+        // cleanup
+        llama_batch_free(seq_batch); // Ensure batch is freed even on error
+        llama_sampler_free(smpl);
+        llama_free(ctx);
+        goto next_turn; // Jump to the next iteration of the while loop
+      }
+      llama_batch_free(seq_batch);
     }
 
     // Print Output Header
     std::cout << "Assistant: ";
 
-    // Decode Prompt
-    llama_batch batch =
-        llama_batch_get_one(prompt_tokens.data(), prompt_tokens.size());
-    if (llama_decode(ctx, batch) != 0) {
-      std::cerr << "Failed to decode prompt" << std::endl;
-      continue;
-    }
-
     // Generation Loop
-    int n_predict = 128; // Limit generation length
+    int n_predict = 512; // Limit generation length
+
     for (int i = 0; i < n_predict; i++) {
       llama_token new_token_id = llama_sampler_sample(smpl, ctx, -1);
 
@@ -149,18 +187,27 @@ int main(int argc, char **argv) {
           llama_token_to_piece(vocab, new_token_id, buf, sizeof(buf), 0, true);
       std::string piece(buf, n);
       std::cout << piece << std::flush;
+      current_response += piece;
 
-      batch = llama_batch_get_one(&new_token_id, 1);
+      // Prepare next batch
+      llama_batch batch = llama_batch_get_one(&new_token_id, 1);
       if (llama_decode(ctx, batch) != 0) {
+        std::cerr << "Failed to decode generated token" << std::endl;
         break;
       }
     }
     std::cout << std::endl;
+
+    // Append full response to history for next turn
+    conversation_history += current_response + "\n";
+
+    // Cleanup per turn
+    llama_sampler_free(smpl);
+    llama_free(ctx);
+  next_turn:; // Label for goto
   }
 
   // Cleanup
-  llama_sampler_free(smpl);
-  llama_free(ctx);
   llama_model_free(model);
 
   return 0;
