@@ -35,16 +35,15 @@
     ```
 3.  **Run**:
     ```powershell
-    .\build\LlamaCppRunner.exe
+    .\build\AgentSentinel.exe
     ```
-    *(Note: The executable name will be updated to AgentSentinel.exe in the next major build cycle.)*
 
 ## Usage
 
 Simply run the executable. If the default model is missing, Agent-Sentinel will download it for you automatically (~24.5 GB).
 
 ```powershell
-.\build\LlamaCppRunner.exe
+.\build\AgentSentinel.exe
 ```
 
 ## Known Issues
