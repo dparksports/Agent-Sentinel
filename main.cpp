@@ -107,8 +107,10 @@ int main(int argc, char **argv) {
       break;
     }
 
-    // Update history
-    conversation_history += "User: " + user_input + "\nAssistant: ";
+    // Update history using Nemotron Nano 3 format
+    // Format: <extra_id_1>User\n[Input]\n<extra_id_2>Assistant\n
+    conversation_history +=
+        "<extra_id_1>User\n" + user_input + "\n<extra_id_2>Assistant\n";
 
     // Initialize Context (Recreate per turn for stateless safety)
     auto ctx_params = llama_context_default_params();
@@ -185,13 +187,12 @@ int main(int argc, char **argv) {
     std::cout << "Assistant: ";
 
     // Generation Loop
-    int n_predict = 512; // Limit generation length
+    int n_predict = 1024; // Limit generation length
 
     for (int i = 0; i < n_predict; i++) {
       llama_token new_token_id = llama_sampler_sample(smpl, ctx, -1);
 
       if (llama_vocab_is_eog(vocab, new_token_id)) {
-        std::cerr << "Debug: EOG token encountered." << std::endl;
         break;
       }
 
@@ -204,14 +205,9 @@ int main(int argc, char **argv) {
       current_response += piece;
 
       // Stop sequence detection
-      // Check if response starts with "User:" or contains "\nUser:"
-      if (current_response.find("User:") == 0 ||
-          current_response.find("\nUser:") != std::string::npos) {
-        std::cerr << "Debug: Stop sequence detected." << std::endl;
-
-        size_t stop_pos = current_response.find("User:") == 0
-                              ? 0
-                              : current_response.find("\nUser:");
+      // Check for Nemotron User marker
+      if (current_response.find("<extra_id_1>") != std::string::npos) {
+        size_t stop_pos = current_response.find("<extra_id_1>");
         current_response = current_response.substr(0, stop_pos);
         break;
       }
