@@ -1,9 +1,10 @@
 build/
-*.exe
+models/
+*.gguf
 *.dll
 *.lib
-*.pdb
-.vs/
-*.user
-*.suo
-out/
+*.exe
+.ninja_log
+.ninja_deps
+CMakeCache.txt
+CMakeFiles/

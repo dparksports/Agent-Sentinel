@@ -4,7 +4,7 @@ project(LlamaCppRunner)
 set(CMAKE_CXX_STANDARD 17)
 
 # Define paths to llama.cpp build
-set(LLAMA_CPP_ROOT "C:/Users/honey/mydog/llama.cpp")
+set(LLAMA_CPP_ROOT "${CMAKE_SOURCE_DIR}/../llama.cpp")
 set(LLAMA_INCLUDE_DIR "${LLAMA_CPP_ROOT}/include")
 set(GGML_INCLUDE_DIR "${LLAMA_CPP_ROOT}/ggml/include")
 set(LLAMA_LIB_DIR "${LLAMA_CPP_ROOT}/build/src")
