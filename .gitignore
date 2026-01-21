@@ -1,9 +1,18 @@
+# Build artifacts
 build/
-models/
-*.gguf
+*.exe
 *.dll
 *.lib
-*.exe
+*.exp
+*.obj
+*.pdb
+*.zip
+
+# Models
+models/
+*.gguf
+
+# CMake and Ninja build files
 .ninja_log
 .ninja_deps
 CMakeCache.txt
