@@ -10,6 +10,7 @@ build/
 
 # Models
 models/
+!models/README.md
 *.gguf
 
 # CMake and Ninja build files
