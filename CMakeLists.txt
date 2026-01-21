@@ -15,29 +15,44 @@ set(LLAMA_BIN_DIR "${LLAMA_CPP_ROOT}/build/bin")
 include_directories(${LLAMA_INCLUDE_DIR} ${GGML_INCLUDE_DIR})
 link_directories(${LLAMA_LIB_DIR} ${GGML_LIB_DIR} ${GGML_CUDA_LIB_DIR})
 
-add_executable(AgentSentinel main.cpp)
+# Executable Target
+add_executable(agentic main.cpp)
 
-# Link against llama.lib and ggml.lib
-target_link_libraries(AgentSentinel PRIVATE llama ggml ggml-base ggml-cpu ggml-cuda)
+# Link Libraries
+target_link_libraries(agentic PRIVATE
+    llama
+    ggml
+    ggml-base
+    ggml-cpu
+    ggml-cuda
+)
 
 # Increase stack size to 256MB to handle MSVC std::regex stack usage (Maximum attempt)
-set_target_properties(AgentSentinel PROPERTIES LINK_FLAGS "/STACK:268435456")
+set_target_properties(agentic PROPERTIES LINK_FLAGS "/STACK:268435456")
 
-# Copy dlls to output
-add_custom_command(TARGET AgentSentinel POST_BUILD
+# Post-build copy of DLLs
+add_custom_command(TARGET agentic POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
     "${LLAMA_BIN_DIR}/llama.dll"
-    "$<TARGET_FILE_DIR:AgentSentinel>"
+    $<TARGET_FILE_DIR:agentic>
+)
+add_custom_command(TARGET agentic POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
     "${LLAMA_BIN_DIR}/ggml.dll"
-    "$<TARGET_FILE_DIR:AgentSentinel>"
+    $<TARGET_FILE_DIR:agentic>
+)
+add_custom_command(TARGET agentic POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
     "${LLAMA_BIN_DIR}/ggml-base.dll"
-    "$<TARGET_FILE_DIR:AgentSentinel>"
+    $<TARGET_FILE_DIR:agentic>
+)
+add_custom_command(TARGET agentic POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
     "${LLAMA_BIN_DIR}/ggml-cpu.dll"
-    "$<TARGET_FILE_DIR:AgentSentinel>"
+    $<TARGET_FILE_DIR:agentic>
+)
+add_custom_command(TARGET agentic POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
     "${LLAMA_BIN_DIR}/ggml-cuda.dll"
-    "$<TARGET_FILE_DIR:AgentSentinel>"
+    $<TARGET_FILE_DIR:agentic>
 )

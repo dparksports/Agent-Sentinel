@@ -21,9 +21,27 @@
 - **Visual Studio 2022/2026** (C++ Desktop Development).
 - **CMake** (3.26+).
 - **Ninja** build system.
-- **NVIDIA CUDA Toolkit 12.x**.
+- **NVIDIA CUDA Toolkit 12/13**.
 
-## Build & Run
+## 🛠️ Build from Scratch (One-Click)
+
+If you have the prerequisites installed, you can build everything (including dependencies) using the automated script:
+
+1.  Open **PowerShell** as Administrator.
+2.  Run the build script:
+    ```powershell
+    .\build.ps1
+    ```
+
+### Prerequisites for Build from Scratch
+If the script reports missing tools, download them here:
+- [Visual Studio 2022 Community](https://visualstudio.microsoft.com/downloads/) (Select "C++ Desktop Development")
+- [CMake](https://cmake.org/download/)
+- [Ninja](https://github.com/ninja-build/ninja/releases) (Add to PATH)
+- [Git](https://git-scm.com/downloads)
+- [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-downloads)
+
+## Manual Build Instructions
 
 1.  **Configure**:
     ```powershell
@@ -31,20 +49,36 @@
     ```
 2.  **Build**:
     ```powershell
-    cmake --build build
+    cmake --build build --config Release
     ```
 3.  **Run**:
     ```powershell
-    .\build\AgentSentinel.exe
+    .\build\agentic.exe
     ```
 
 ## Usage
 
-Simply run the executable. If the default model is missing, Agent-Sentinel will download it for you automatically (~24.5 GB).
+Run the agent from the root directory:
 
 ```powershell
-.\build\AgentSentinel.exe
+.\build\agentic.exe
 ```
+
+### Command Line Arguments
+- `model_path`: (Optional) Path to a specific `.gguf` model file. Defaults to Nemotron.
+- `initial_prompt`: (Optional) A prompt to start the conversation automatically.
+
+Example:
+```powershell
+.\build\agentic.exe models/my-model.gguf "Hello, how are you?"
+```
+
+## Features
+- **GPU Acceleration**: 100% offload to NVIDIA GPUs via CUDA.
+- **Smart Memory**: Persistent conversation history using re-evaluation.
+- **Auto-Download**: Automatically downloads the optimized Nemotron-3-Nano model on first run.
+- **Nemotron Optimized**: Uses official prompt templates for high-quality responses.
+- **Clean Interface**: Debug logs are suppressed and written to `log.txt`.
 
 ## Known Issues
 
